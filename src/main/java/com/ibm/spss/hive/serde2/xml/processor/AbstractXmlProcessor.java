@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
 
 /**
@@ -45,7 +46,7 @@ public abstract class AbstractXmlProcessor implements XmlProcessor {
      */
     @SuppressWarnings({"rawtypes"})
     @Override
-    public Object getObjectValue(Object o, String fieldName) {
+    public Object getObjectValue(Object o, String fieldName, Category objectCategory) {
         if (o instanceof Map<?, ?>) {
             XmlNodeArray nodeArray = (XmlNodeArray) ((Map) o).get(fieldName);
             return nodeArray.size() == 0 ? null : nodeArray;

@@ -13,7 +13,9 @@
 
 package com.ibm.spss.hive.serde2.xml;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.FileReader;
 import java.io.InputStream;
 
 import junit.framework.Test;
@@ -45,7 +47,7 @@ public class HiveXmlRecordReaderTest extends TestCase {
 
     private static final String XML = "...<record>record1</record>...<record>record2</record>...";
 
-    public void test() throws Exception {
+    public void test() throws Exception {       
         JobConf jobConf = new JobConf();
         jobConf.set(HiveXmlRecordReader.START_TAG_KEY, "<record>");
         jobConf.set(HiveXmlRecordReader.END_TAG_KEY, "</record>");

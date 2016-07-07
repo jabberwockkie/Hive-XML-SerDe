@@ -19,6 +19,7 @@ package com.ibm.spss.hive.serde2.xml.processor.java;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -43,6 +44,12 @@ public class NodeArray extends ArrayList<Node> implements SerDeArray {
     public NodeArray(NodeList nodeList) {
         for (int nodeIndex = 0; nodeList != null && nodeIndex < nodeList.getLength(); ++nodeIndex) {
             add(nodeList.item(nodeIndex));
+        }
+    }
+    
+    public NodeArray(NamedNodeMap nodeMap) {
+        for (int nodeIndex = 0; nodeMap != null && nodeIndex < nodeMap.getLength(); ++nodeIndex) {
+            add(nodeMap.item(nodeIndex));
         }
     }
 

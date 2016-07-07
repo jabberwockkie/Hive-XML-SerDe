@@ -68,7 +68,7 @@ public class XmlStructObjectInspector extends StandardStructObjectInspector {
         } else {
             ObjectInspector fieldObjectInspector = structField.getFieldObjectInspector();
             Category category = fieldObjectInspector.getCategory();
-            Object fieldData = this.xmlProcessor.getObjectValue(data, structField.getFieldName());
+            Object fieldData = this.xmlProcessor.getObjectValue(data, structField.getFieldName(), category);
             switch (category) {
                 case PRIMITIVE: {
                     PrimitiveObjectInspector primitiveObjectInspector = (PrimitiveObjectInspector) fieldObjectInspector;

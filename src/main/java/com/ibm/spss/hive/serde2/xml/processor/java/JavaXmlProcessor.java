@@ -19,8 +19,11 @@ package com.ibm.spss.hive.serde2.xml.processor.java;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -35,8 +38,12 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -59,6 +66,9 @@ public class JavaXmlProcessor implements XmlProcessor {
     private DocumentBuilder builder = null;
 
     private static XPathFactory XPATH_FACTORY = null;
+    
+ // Define Logging
+    static final Log LOG = LogFactory.getLog(JavaXmlProcessor.class.getName());
 
     static {
         DOCUMENT_BUILDER_FACTORY = DocumentBuilderFactory.newInstance();
@@ -116,7 +126,7 @@ public class JavaXmlProcessor implements XmlProcessor {
                                 nodeArray.add(node);
                             }
                         } else {
-                            trimWhitespace(node);
+                            Node trimmedNode = trimWhitespace(node);
                             nodeArray.add(node);
                         }
                     }
@@ -134,7 +144,7 @@ public class JavaXmlProcessor implements XmlProcessor {
      */
     @SuppressWarnings("rawtypes")
     @Override
-    public Object getObjectValue(Object o, String fieldName) {
+    public Object getObjectValue(Object o, String fieldName, Category objectCategory) {
         if (o instanceof Map<?, ?>) {
             NodeArray nodeArray = (NodeArray) ((Map) o).get(fieldName);
             return nodeArray.size() == 0 ? null : nodeArray;
@@ -144,12 +154,44 @@ public class JavaXmlProcessor implements XmlProcessor {
             NodeArray array = (NodeArray) o;
             List<Node> nodes = new ArrayList<Node>();
             for (Node node : array) {
-                Object value = getObjectValue(node, fieldName);
-                if (value instanceof Node) {
-                    nodes.add((Node) value);
-                } else if (value instanceof NodeArray) {
-                    nodes.addAll((NodeArray) value);
-                }
+            	// Patch for embedded arrays within structs.
+            	if(objectCategory == Category.LIST && node.getNodeType() == Node.ELEMENT_NODE){
+            		// If the node already matches the field, no need to search for it.
+            		if(node.getNodeName().equalsIgnoreCase(fieldName)) {
+            			nodes.add(node);
+            		}
+            		else {
+            			// Find the specific node and it's properly cased name to convert to an Element
+	            		List<String> nodeNames = new ArrayList<String>();
+	            		Object result = getChildValue(node, fieldName);
+	            		
+	            		// Add the properly cased names to the list
+	            		if (result instanceof Node) {
+	            			nodeNames.add(((Node)result).getNodeName());
+		                } else if (result instanceof NodeArray) {
+		                    for(Node child : (NodeArray)result){
+		                    	nodeNames.add(((Node)child).getNodeName());
+		                    }
+		                }
+	            		
+	            		// Find the appropriate array now that we have found the proper name
+	            		Element elementNode = (Element) node;
+	            		for(String nodeName : nodeNames){
+	            			int listNodes = elementNode.getElementsByTagName(nodeName).getLength();
+	                		for(int nodeIndex = 0; nodeIndex < listNodes; ++nodeIndex){
+	                			nodes.add(elementNode.getElementsByTagName(nodeName).item(nodeIndex));
+	                		}
+	            		}
+            		}
+            	}
+            	else {
+	                Object value = getObjectValue(node, fieldName);
+	                if (value instanceof Node) {
+	                    nodes.add((Node) value);
+	                } else if (value instanceof NodeArray) {
+	                    nodes.addAll((NodeArray) value);
+	                }
+            	}
             }
             return nodes.size() == 0 ? null : new NodeArray(nodes);
         }
@@ -169,22 +211,28 @@ public class JavaXmlProcessor implements XmlProcessor {
         // we have to take into account the fact that fieldName will be in the lower case
         if (node != null) {
             String name = node.getLocalName();
+            if(name == null) {
+            	name = node.getNodeName();
+            }
             switch (node.getNodeType()) {
                 case Node.ATTRIBUTE_NODE:
                     return name.equalsIgnoreCase(fieldName) ? node : null;
                 case Node.ELEMENT_NODE: {
                     if (name.equalsIgnoreCase(fieldName)) {
-                        return new NodeArray(node.getChildNodes());
+                    	// Patch for all Attribute Elements
+                    	if(!node.hasChildNodes() && node.hasAttributes()) {
+                    		return new NodeArray(node.getAttributes());
+                    	}
+                    	else {
+                    		return new NodeArray(node.getChildNodes());
+                    	}
                     } else {
-                        NamedNodeMap namedNodeMap = node.getAttributes();
-                        for (int attributeIndex = 0; attributeIndex < namedNodeMap.getLength(); ++attributeIndex) {
-                            Node attribute = namedNodeMap.item(attributeIndex);
-                            if (attribute.getLocalName().equalsIgnoreCase(fieldName)) {
-                                return attribute;
-                            }
-                        }
-                        return null;
+                    	// Patch to fix complex arrays & structures
+                    	return getChildValue(node, fieldName);
                     }
+                }
+                case Node.TEXT_NODE: {
+                	return node;
                 }
                 default:
                     return null;
@@ -193,6 +241,44 @@ public class JavaXmlProcessor implements XmlProcessor {
         return null;
     }
 
+    /**
+     * Returns the matching child value of the specified field (if any) for the object. This will search attributes and child nodes for the value.
+     * 
+     * @param o
+     *            the object
+     * @return the child node value of the object or a node array of child nodes for recursive lookup.
+     */
+    private Object getChildValue(Node node, String fieldName) {	
+    	LOG.debug("Node Name: " + node.getNodeName() + "; Field:" + fieldName + ";");
+    	if(node.hasAttributes()) {
+            NamedNodeMap namedNodeMap = node.getAttributes();
+            for (int attributeIndex = 0; attributeIndex < namedNodeMap.getLength(); ++attributeIndex) {
+                Node attribute = namedNodeMap.item(attributeIndex);
+                if (attribute.getLocalName().equalsIgnoreCase(fieldName)) {
+                    return attribute;
+                }
+            }
+    	}
+    	if(node.hasChildNodes()){
+			NodeArray children = new NodeArray(node.getChildNodes());
+			for (Node child : children){
+				if(fieldName.equalsIgnoreCase(child.getNodeName())) {
+					// Patch to get embedded structs in arrays and to extract their contents.
+					int numOfNodes = child.getChildNodes().getLength();
+					if(child.hasAttributes() || numOfNodes > 1) {
+						List<Node> nodes = new ArrayList<Node>();
+						nodes.add(child);
+						return new NodeArray(nodes);
+					}
+					else {
+						return new NodeArray(child.getChildNodes());
+					}
+				}
+			}
+    	}
+        return null;
+    }
+       
     /**
      * Returns the string value for the object
      * 
@@ -233,7 +319,8 @@ public class JavaXmlProcessor implements XmlProcessor {
         switch (node.getNodeType()) {
             case Node.ATTRIBUTE_NODE:
             case Node.TEXT_NODE:
-                return node.getNodeValue();
+            	// return null for empty strings & changed to return text content of a text node and not the node value which will always be null          	
+                return node.getTextContent().isEmpty() ? null : node.getTextContent();
             default: {
                 try {
                     Transformer transformer = TRANSFORMER_FACTORY.newTransformer();
@@ -394,28 +481,43 @@ public class JavaXmlProcessor implements XmlProcessor {
      * 
      * @param node
      */
-    protected void trimWhitespace(Node node) {
+    private Node trimWhitespace(Node node) {
         List<Node> doomedChildren = new ArrayList<Node>();
-        NodeList children = node.getChildNodes();
-        for (int childIndex = 0; childIndex < children.getLength(); ++childIndex) {
-            Node child = children.item(childIndex);
-            short nodeType = child.getNodeType();
-            if (nodeType == Node.ELEMENT_NODE) {
-                trimWhitespace(child);
-            } else if (nodeType == Node.TEXT_NODE) {
-                String trimmedValue = child.getNodeValue().trim();
-                if (trimmedValue.length() == 0) {
-                    doomedChildren.add(child);
-                } else {
-                    child.setNodeValue(trimmedValue);
-                }
-            } else if (nodeType == Node.COMMENT_NODE) {
-                node.removeChild(child);
-            }
+        NodeArray children = new NodeArray(node.getChildNodes());
+        for (Node child : children){
+        	switch (child.getNodeType()) {
+            	case Node.COMMENT_NODE:
+            		node.removeChild(child);
+            	case Node.TEXT_NODE:
+            		String trimmedValue = child.getTextContent().trim();
+                    if (trimmedValue.length() == 0) {
+                        doomedChildren.add(child);
+                    } else {
+                        child.setTextContent(trimmedValue);
+                    }
+            	case Node.ELEMENT_NODE:
+            		child = trimWhitespace(child);
+        	}	
         }
+        if(node.hasAttributes()) {
+            NamedNodeMap namedNodeMap = node.getAttributes();
+            for (int attributeIndex = 0; attributeIndex < namedNodeMap.getLength(); ++attributeIndex) {
+                Node attribute = namedNodeMap.item(attributeIndex);
+                String trimmedValue = attribute.getNodeValue().trim();
+                if (trimmedValue.length() == 0) {
+                	attribute.setNodeValue(null);
+                }
+                else
+                {
+                	attribute.setNodeValue(trimmedValue);
+                }
+                
+            }
+    	}
         for (Node doomed : doomedChildren) {
             node.removeChild(doomed);
         }
+        return node;
     }
 
     /**
@@ -423,11 +525,12 @@ public class JavaXmlProcessor implements XmlProcessor {
      * @return
      */
     private Node trimTextNode(Node node) {
-        String trimmedValue = node.getNodeValue().trim();
+    	// Changed to trim the text content of a text node and not the node value which will always be null
+        String trimmedValue = node.getTextContent().trim();
         if (trimmedValue.length() == 0) {
             return null;
         } else {
-            node.setNodeValue(trimmedValue);
+            node.setTextContent(trimmedValue);
             return node;
         }
     }

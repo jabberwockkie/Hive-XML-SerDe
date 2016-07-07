@@ -19,6 +19,7 @@ package com.ibm.spss.hive.serde2.xml.processor;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
 
 /**
@@ -51,7 +52,7 @@ public interface XmlProcessor {
      *            the field name
      * @return the value for the given object and field name
      */
-    public Object getObjectValue(Object o, String fieldName);
+    public Object getObjectValue(Object o, String fieldName, Category objectCategory);
 
     /**
      * Returns the primitive object value
