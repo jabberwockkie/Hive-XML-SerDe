@@ -119,16 +119,21 @@ public class JavaXmlProcessor implements XmlProcessor {
                 if (expression != null) {
                     NodeList nodeList = (NodeList) expression.evaluate(document, XPathConstants.NODESET);
                     for (int nodeIndex = 0; nodeIndex < nodeList.getLength(); ++nodeIndex) {
-                        Node node = nodeList.item(nodeIndex);
-                        if (node.getNodeType() == Node.TEXT_NODE) {
-                            Node text = trimTextNode(node);
-                            if (text != null) {
-                                nodeArray.add(node);
-                            }
-                        } else {
-                            Node trimmedNode = trimWhitespace(node);
-                            nodeArray.add(node);
-                        }
+                		try {
+	                        Node node = nodeList.item(nodeIndex);
+	                        if (node.getNodeType() == Node.TEXT_NODE) {
+	                            Node text = trimTextNode(node);
+	                            if (text != null) {
+	                                nodeArray.add(node);
+	                            }
+	                        } else {
+									Node trimmedNode = trimWhitespace(node);
+									nodeArray.add(trimmedNode);
+	                        }
+                		}
+                        catch (NullPointerException e) {
+							// Do Nothing.
+						}
                     }
                 }
                 result.put(name, nodeArray);
@@ -149,7 +154,7 @@ public class JavaXmlProcessor implements XmlProcessor {
             NodeArray nodeArray = (NodeArray) ((Map) o).get(fieldName);
             return nodeArray.size() == 0 ? null : nodeArray;
         } else if (o instanceof Node) {
-            return getObjectValue((Node) o, fieldName);
+            return getObjectValue((Node) o, fieldName, objectCategory);
         } else if (o instanceof NodeArray) {
             NodeArray array = (NodeArray) o;
             List<Node> nodes = new ArrayList<Node>();
@@ -163,7 +168,7 @@ public class JavaXmlProcessor implements XmlProcessor {
             		else {
             			// Find the specific node and it's properly cased name to convert to an Element
 	            		List<String> nodeNames = new ArrayList<String>();
-	            		Object result = getChildValue(node, fieldName);
+	            		Object result = getChildValue(node, fieldName,objectCategory);
 	            		
 	            		// Add the properly cased names to the list
 	            		if (result instanceof Node) {
@@ -185,7 +190,7 @@ public class JavaXmlProcessor implements XmlProcessor {
             		}
             	}
             	else {
-	                Object value = getObjectValue(node, fieldName);
+	                Object value = getObjectValue(node, fieldName,objectCategory);
 	                if (value instanceof Node) {
 	                    nodes.add((Node) value);
 	                } else if (value instanceof NodeArray) {
@@ -207,7 +212,7 @@ public class JavaXmlProcessor implements XmlProcessor {
      *            the field name
      * @return the object value for the given field name and node
      */
-    private Object getObjectValue(Node node, String fieldName) {
+    private Object getObjectValue(Node node, String fieldName, Category objectCategory) {
         // we have to take into account the fact that fieldName will be in the lower case
         if (node != null) {
             String name = node.getLocalName();
@@ -228,7 +233,7 @@ public class JavaXmlProcessor implements XmlProcessor {
                     	}
                     } else {
                     	// Patch to fix complex arrays & structures
-                    	return getChildValue(node, fieldName);
+                    	return getChildValue(node, fieldName,objectCategory);
                     }
                 }
                 case Node.TEXT_NODE: {
@@ -248,7 +253,7 @@ public class JavaXmlProcessor implements XmlProcessor {
      *            the object
      * @return the child node value of the object or a node array of child nodes for recursive lookup.
      */
-    private Object getChildValue(Node node, String fieldName) {	
+    private Object getChildValue(Node node, String fieldName, Category objectCategory) {	
     	LOG.debug("Node Name: " + node.getNodeName() + "; Field:" + fieldName + ";");
     	if(node.hasAttributes()) {
             NamedNodeMap namedNodeMap = node.getAttributes();
@@ -261,21 +266,29 @@ public class JavaXmlProcessor implements XmlProcessor {
     	}
     	if(node.hasChildNodes()){
 			NodeArray children = new NodeArray(node.getChildNodes());
+			NodeArray arrayMatches = new NodeArray();
 			for (Node child : children){
 				if(fieldName.equalsIgnoreCase(child.getNodeName())) {
 					// Patch to get embedded structs in arrays and to extract their contents.
 					int numOfNodes = child.getChildNodes().getLength();
-					if(child.hasAttributes() || numOfNodes > 1) {
+					// Check if an array has attributes but no child nodes and is a list. We assume a repeating element.
+					if(child.hasAttributes() && numOfNodes == 0 && objectCategory == Category.LIST) {
+						arrayMatches.add(child);
+					}
+					// Check the child for attributes and number of child nodes, just return this object
+					else if(child.hasAttributes() || numOfNodes > 1) {
 						List<Node> nodes = new ArrayList<Node>();
 						nodes.add(child);
 						return new NodeArray(nodes);
 					}
+					// Bail out, just send back the child and any child nodes.
 					else {
 						return new NodeArray(child.getChildNodes());
 					}
 				}
 			}
-    	}
+			return arrayMatches.size() == 0 ? null : arrayMatches;
+		}
         return null;
     }
        

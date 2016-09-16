@@ -16,6 +16,11 @@
 
 package com.ibm.spss.hive.serde2.xml.objectinspector;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -191,6 +196,42 @@ public class ObjectInspectorTest extends TestCase {
         Object data = structInspector.getStructFieldData(o, structField);
         assertEquals("string", data.toString());
     }
+    
+    public void testXPathXmlString() throws SerDeException {
+        XmlSerDe xmlSerDe = new XmlSerDe();
+        Configuration configuration = new Configuration();
+        Properties properties = new Properties();
+        properties.put(LIST_COLUMNS, "test");
+        properties.put(LIST_COLUMN_TYPES, "string");
+        properties.setProperty("column.xpath.test", "/tests/test[@Name='OutstandingBalance']/@Value[normalize-space()]");
+        Text text = new Text();
+        text.set("<tests><test Name=\"OutstandingBalance\" Value=\"1565.0593\"/></tests>");
+        
+        /*
+        Object o = xmlSerDe.deserialize(text);
+        XmlStructObjectInspector structInspector = ((XmlStructObjectInspector) xmlSerDe.getObjectInspector());
+        StructField structField = structInspector.getStructFieldRef("test");
+        Object data = structInspector.getStructFieldData(o, structField);
+        */
+        
+        // Initialize the SerDe
+		xmlSerDe.initialize(configuration, properties);
+		StructObjectInspector soi = (StructObjectInspector) xmlSerDe.getObjectInspector();
+		List<? extends StructField> fieldRefs = soi.getAllStructFieldRefs();
+		Object[] deserializedFields = new Object[fieldRefs.size()];
+	    Object rowObj;
+	    ObjectInspector fieldOI;
+        
+	    rowObj = xmlSerDe.deserialize(text);
+	    for (int i = 0; i < fieldRefs.size(); i++) {
+		    StructField fieldRef = fieldRefs.get(i);
+		    fieldOI = fieldRef.getFieldObjectInspector();
+		    Object fieldData = soi.getStructFieldData(rowObj, fieldRef);
+		    deserializedFields[i] = SerDeUtils.toThriftPayload(fieldData, fieldOI, 0);
+    	}
+        
+        assertEquals("1565.0593", deserializedFields[0].toString());
+    }
 
     public void testSimpleXmlList() throws SerDeException {
          XmlSerDe xmlSerDe = new XmlSerDe();
@@ -229,6 +270,28 @@ public class ObjectInspectorTest extends TestCase {
          PrimitiveObjectInspector valueObjectInspector = (PrimitiveObjectInspector) fieldInspector.getMapValueObjectInspector();
          String test = (String) valueObjectInspector.getPrimitiveJavaObject(map.get("test1"));
          assertEquals("string1", test);
+    }
+    
+    @SuppressWarnings("rawtypes")
+    public void testSimpleXmlMapAttributes() throws SerDeException {
+         XmlSerDe xmlSerDe = new XmlSerDe();
+         Configuration configuration = new Configuration();
+         Properties properties = new Properties();
+         properties.put(LIST_COLUMNS, "test");
+         properties.put(LIST_COLUMN_TYPES, "map<string,string>");
+         properties.setProperty("column.xpath.test", "/root/test1/@*");
+         xmlSerDe.initialize(configuration, properties);
+         Text text = new Text();
+         text.set("<root><test1 name=\"\" value=\"none1\" /><test2 name=\"\" value=\"none2\"/></root>");
+         Object o = xmlSerDe.deserialize(text);
+         XmlStructObjectInspector structInspector = ((XmlStructObjectInspector) xmlSerDe.getObjectInspector());
+         StructField structField = structInspector.getStructFieldRef("test");
+         Object data = structInspector.getStructFieldData(o, structField);
+         XmlMapObjectInspector fieldInspector = (XmlMapObjectInspector) structField.getFieldObjectInspector();
+         Map map = fieldInspector.getMap(data);
+         PrimitiveObjectInspector valueObjectInspector = (PrimitiveObjectInspector) fieldInspector.getMapValueObjectInspector();
+         String test = (String) valueObjectInspector.getPrimitiveJavaObject(map.get("name"));
+         assertEquals("", test);
     }
 
     @SuppressWarnings("rawtypes")
@@ -367,5 +430,47 @@ public class ObjectInspectorTest extends TestCase {
 		    deserializedFields[i] = SerDeUtils.toThriftPayload(fieldData, fieldOI, 0);
     	}
         assertEquals("{\"extra\":\"extraTest\",\"test\":[{\"id\":\"1234\",\"code\":\"testCode1\",\"child\":{\"number\":\"4321\",\"child\":\"testing child1\"},\"ref\":\"ABC123\"},{\"id\":\"7890\",\"code\":\"testCode2\",\"child\":{\"number\":\"0987\",\"child\":\"testing child2\"},\"ref\":\"123abc\"}]}", deserializedFields[0].toString());
+    }
+    
+    public void testXmlFile() throws SerDeException, IOException {
+    	// Setup Hive configuration & test data
+		Configuration configuration = new Configuration();
+		Properties properties = new Properties();
+		properties.put(LIST_COLUMNS, "tests");
+		properties.put(LIST_COLUMN_TYPES, "struct<Test:array<struct<Name:string,Run:string,SubTest:array<struct<Name:string,Value:string>>>>>");
+		properties.setProperty("column.xpath.tests", "/Tests");
+
+		// Read in the input file
+        StringBuilder sb = new StringBuilder();
+        BufferedReader br = new BufferedReader( new FileReader("/home/cloudera/temp/test.xml") );
+        String line;
+        while ( (line = br.readLine()) != null ) {
+          sb.append(line).append("\n");
+        }
+        br.close();
+		
+		Text text = new Text();
+        text.set(sb.toString());
+        
+        // Initialize the SerDe
+    	XmlSerDe xmlSerDe = new XmlSerDe();
+		xmlSerDe.initialize(configuration, properties);
+		StructObjectInspector soi = (StructObjectInspector) xmlSerDe.getObjectInspector();
+		List<? extends StructField> fieldRefs = soi.getAllStructFieldRefs();
+		Object[] deserializedFields = new Object[fieldRefs.size()];
+	    Object rowObj;
+	    ObjectInspector fieldOI;
+	    
+	    rowObj = xmlSerDe.deserialize(text);
+	    for (int i = 0; i < fieldRefs.size(); i++) {
+		    StructField fieldRef = fieldRefs.get(i);
+		    fieldOI = fieldRef.getFieldObjectInspector();
+		    Object fieldData = soi.getStructFieldData(rowObj, fieldRef);
+		    deserializedFields[i] = SerDeUtils.toThriftPayload(fieldData, fieldOI, 0);
+    	}
+	    @SuppressWarnings("resource")
+		FileWriter fw = new FileWriter("/home/cloudera/temp/test.txt");
+	    fw.write(deserializedFields[0].toString());
+	    assertTrue(deserializedFields[0].toString().length() > 0);
     }
 }
