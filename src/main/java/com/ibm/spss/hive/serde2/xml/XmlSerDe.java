@@ -128,9 +128,11 @@ public class XmlSerDe implements SerDe {
                 mapSpecification.put(element, mapEntry);
             }
         }
+        /*
         if (queries.size() < columnNames.size()) {
             throw new RuntimeException("The number of XPath expressions does not much the number of columns");
         }
+        */
         // (4) initialize the XML processor
         this.xmlProcessor.initialize(new XmlProcessorContext() {
 

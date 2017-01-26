@@ -152,7 +152,7 @@ public class JavaXmlProcessor implements XmlProcessor {
     public Object getObjectValue(Object o, String fieldName, Category objectCategory) {
         if (o instanceof Map<?, ?>) {
             NodeArray nodeArray = (NodeArray) ((Map) o).get(fieldName);
-            return nodeArray.size() == 0 ? null : nodeArray;
+            return (nodeArray == null || nodeArray.size() == 0) ? null : nodeArray;
         } else if (o instanceof Node) {
             return getObjectValue((Node) o, fieldName, objectCategory);
         } else if (o instanceof NodeArray) {
@@ -175,7 +175,8 @@ public class JavaXmlProcessor implements XmlProcessor {
 	            			nodeNames.add(((Node)result).getNodeName());
 		                } else if (result instanceof NodeArray) {
 		                    for(Node child : (NodeArray)result){
-		                    	nodeNames.add(((Node)child).getNodeName());
+		                    	if(!nodeNames.contains(((Node)child).getNodeName()))
+		                    		nodeNames.add(((Node)child).getNodeName());
 		                    }
 		                }
 	            		

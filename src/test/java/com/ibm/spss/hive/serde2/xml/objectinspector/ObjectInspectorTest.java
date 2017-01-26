@@ -349,7 +349,7 @@ public class ObjectInspectorTest extends TestCase {
 		Properties properties = new Properties();
 		properties.put(LIST_COLUMNS, "test");
 		properties.put(LIST_COLUMN_TYPES, "array<struct<id:string,code:string,child:struct<number:string,child:string>,ref:string>>");
-		properties.setProperty("column.xpath.test", "/root//test");
+		properties.setProperty("column.xpath.test", "/root/test");
         Text text = new Text();
         text.set("<root><test><id>1234</id><code>testCode1</code><child number=\"4321\">testing child1</child><ref>ABC123</ref></test><test><id>7890</id><code>testCode2</code><child number=\"0987\">testing child2</child><ref>123abc</ref></test></root>");
         
@@ -378,7 +378,7 @@ public class ObjectInspectorTest extends TestCase {
 		Properties properties = new Properties();
 		properties.put(LIST_COLUMNS, "tests");
 		properties.put(LIST_COLUMN_TYPES, "struct<extra:string,test:array<struct<id:string,code:string,child:struct<number:string,child:string>,ref:string>>>");
-		properties.setProperty("column.xpath.tests", "/root/*");
+		properties.setProperty("column.xpath.tests", "/root/tests");
         Text text = new Text();
         text.set("<root><tests><extra>extraTest</extra><test><id>1234</id><code>testCode1</code><child number=\"4321\">testing child1</child><ref>ABC123</ref></test><test><id>7890</id><code>testCode2</code><child number=\"0987\">testing child2</child><ref>123abc</ref></test></tests></root>");
         
@@ -406,7 +406,7 @@ public class ObjectInspectorTest extends TestCase {
 		Properties properties = new Properties();
 		properties.put(LIST_COLUMNS, "tests");
 		properties.put(LIST_COLUMN_TYPES, "struct<extra:string,test:array<struct<id:string,code:string,child:struct<number:string,child:string>,ref:string>>>");
-		properties.setProperty("column.xpath.tests", "/root/*");
+		properties.setProperty("column.xpath.tests", "/root/tests");
         Text text = new Text();
         text.set("<root><tests extra=\"extraTest\">"
         		+ "<test id=\"1234\" code=\"testCode1\" ref=\"ABC123\"><child number=\"4321\">testing child1</child></test>"
@@ -440,9 +440,10 @@ public class ObjectInspectorTest extends TestCase {
 		properties.put(LIST_COLUMN_TYPES, "struct<Test:array<struct<Name:string,Run:string,SubTest:array<struct<Name:string,Value:string>>>>>");
 		properties.setProperty("column.xpath.tests", "/Tests");
 
+
 		// Read in the input file
         StringBuilder sb = new StringBuilder();
-        BufferedReader br = new BufferedReader( new FileReader("/home/cloudera/temp/test.xml") );
+        BufferedReader br = new BufferedReader( new FileReader("/home/cloudera/xml/test.xml") );
         String line;
         while ( (line = br.readLine()) != null ) {
           sb.append(line).append("\n");
@@ -471,6 +472,7 @@ public class ObjectInspectorTest extends TestCase {
 	    @SuppressWarnings("resource")
 		FileWriter fw = new FileWriter("/home/cloudera/temp/test.txt");
 	    fw.write(deserializedFields[0].toString());
+    	fw.flush();
 	    assertTrue(deserializedFields[0].toString().length() > 0);
     }
 }
