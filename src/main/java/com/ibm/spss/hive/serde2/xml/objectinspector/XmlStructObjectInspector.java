@@ -24,8 +24,6 @@ import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
 import org.apache.hadoop.hive.serde2.objectinspector.StandardStructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
-import org.apache.log4j.Logger;
-
 import com.ibm.spss.hive.serde2.xml.processor.SerDeArray;
 import com.ibm.spss.hive.serde2.xml.processor.XmlProcessor;
 
@@ -33,8 +31,6 @@ import com.ibm.spss.hive.serde2.xml.processor.XmlProcessor;
  * The struct object inspector
  */
 public class XmlStructObjectInspector extends StandardStructObjectInspector {
-    private static final Logger LOGGER = Logger.getLogger(XmlStructObjectInspector.class);
-
     private XmlProcessor xmlProcessor = null;
 
     /**

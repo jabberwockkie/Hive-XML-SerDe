@@ -196,7 +196,7 @@ public class JavaXPathProcessorTest extends TestCase {
 
         Map<String, NodeArray> out = xPathProcessor.parse(data);
         NodeArray nodeArray = out.get("field1");
-        Map map = xPathProcessor.getMap(nodeArray);
+        Map<?, ?> map = xPathProcessor.getMap(nodeArray);
         assertEquals("value1", ((NodeArray) map.get("key1")).get(0).getNodeValue());
         assertEquals("value2", ((NodeArray) map.get("key2")).get(0).getNodeValue());
     }
@@ -233,7 +233,7 @@ public class JavaXPathProcessorTest extends TestCase {
 
         Map<String, NodeArray> out = xPathProcessor.parse(data);
         NodeArray nodeArray = out.get("field1");
-        Map map = xPathProcessor.getMap(nodeArray);
+        Map<?, ?> map = xPathProcessor.getMap(nodeArray);
         assertEquals("value1", map.get("key1"));
         assertEquals("value2", map.get("key2"));
     }
@@ -268,7 +268,7 @@ public class JavaXPathProcessorTest extends TestCase {
 
         Map<String, NodeArray> out = xPathProcessor.parse(data);
         NodeArray nodeArray = out.get("field1");
-        Map map = xPathProcessor.getMap(nodeArray);
+        Map<?, ?> map = xPathProcessor.getMap(nodeArray);
         assertEquals("value1", map.get("key1"));
     }
 
@@ -302,7 +302,7 @@ public class JavaXPathProcessorTest extends TestCase {
 
         Map<String, NodeArray> out = xPathProcessor.parse(data);
         NodeArray nodeArray = out.get("field1");
-        Map map = xPathProcessor.getMap(nodeArray);
+        Map<?, ?> map = xPathProcessor.getMap(nodeArray);
         assertEquals("value1", (((NodeArray) map.get("key1"))).get(0).getNodeValue());
     }
 
@@ -336,7 +336,7 @@ public class JavaXPathProcessorTest extends TestCase {
 
         Map<String, NodeArray> out = xPathProcessor.parse(data);
         NodeArray nodeArray = out.get("field1");
-        Map map = xPathProcessor.getMap(nodeArray);
+        Map<?, ?> map = xPathProcessor.getMap(nodeArray);
         assertEquals("value1", map.get("key1"));
     }
 
@@ -370,7 +370,7 @@ public class JavaXPathProcessorTest extends TestCase {
 
         Map<String, NodeArray> out = xPathProcessor.parse(data);
         NodeArray nodeArray = out.get("field1");
-        Map map = xPathProcessor.getMap(nodeArray);
+        Map<?, ?> map = xPathProcessor.getMap(nodeArray);
         assertEquals("value1", map.get("key1"));
     }
 
@@ -404,7 +404,7 @@ public class JavaXPathProcessorTest extends TestCase {
 
         Map<String, NodeArray> out = xPathProcessor.parse(data);
         NodeArray nodeArray = out.get("field1");
-        Map map = xPathProcessor.getMap(nodeArray);
+        Map<?, ?> map = xPathProcessor.getMap(nodeArray);
         assertEquals("value1", map.get("key1"));
     }
 

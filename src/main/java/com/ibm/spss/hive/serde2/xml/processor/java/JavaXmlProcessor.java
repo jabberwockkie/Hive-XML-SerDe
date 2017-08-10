@@ -59,6 +59,7 @@ import com.ibm.spss.hive.serde2.xml.processor.XmlUtils;
 /**
  * The XML processor implementation based on the javax.xml.xpath.XPath
  */
+@SuppressWarnings("unused")
 public class JavaXmlProcessor implements XmlProcessor {
 
     private static TransformerFactory TRANSFORMER_FACTORY = TransformerFactory.newInstance();
@@ -266,29 +267,27 @@ public class JavaXmlProcessor implements XmlProcessor {
             }
     	}
     	if(node.hasChildNodes()){
-			NodeArray children = new NodeArray(node.getChildNodes());
-			NodeArray arrayMatches = new NodeArray();
+			NodeArray children = new NodeArray(node.getChildNodes()).search(fieldName);
+			NodeArray matches = new NodeArray();
+			NodeArray repeatingMatches = new NodeArray();
+			
 			for (Node child : children){
-				if(fieldName.equalsIgnoreCase(child.getNodeName())) {
-					// Patch to get embedded structs in arrays and to extract their contents.
-					int numOfNodes = child.getChildNodes().getLength();
-					// Check if an array has attributes but no child nodes and is a list. We assume a repeating element.
-					if(child.hasAttributes() && numOfNodes == 0 && objectCategory == Category.LIST) {
-						arrayMatches.add(child);
-					}
-					// Check the child for attributes and number of child nodes, just return this object
-					else if(child.hasAttributes() || numOfNodes > 1) {
-						List<Node> nodes = new ArrayList<Node>();
-						nodes.add(child);
-						return new NodeArray(nodes);
-					}
-					// Bail out, just send back the child and any child nodes.
-					else {
-						return new NodeArray(child.getChildNodes());
-					}
+				// Patch to get embedded structs in arrays and to extract their contents.
+				int numOfNodes = child.getChildNodes().getLength();
+				// Check if an array has attributes but no child nodes and is a list. We assume a repeating element.
+				if(child.hasAttributes() && numOfNodes == 0 && objectCategory == Category.LIST) {
+					matches.add(child);
+				}
+				// Check the child for attributes and number of child nodes, we'll return the repeating nodes that fit this criteria
+				else if(child.hasAttributes() || numOfNodes > 1) {
+					repeatingMatches.add(child);
+				}
+				// Bail out, just send back the child and any child nodes.
+				else {
+					return new NodeArray(child.getChildNodes());
 				}
 			}
-			return arrayMatches.size() == 0 ? null : arrayMatches;
+			return repeatingMatches.size() == 0 ? (matches.size() == 0 ? null : matches) : repeatingMatches;
 		}
         return null;
     }

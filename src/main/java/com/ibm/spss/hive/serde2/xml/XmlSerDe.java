@@ -47,6 +47,7 @@ import com.ibm.spss.hive.serde2.xml.processor.java.JavaXmlProcessor;
 /**
  * The XML serializer/deserializer for Apache Hive
  */
+@SuppressWarnings("deprecation")
 public class XmlSerDe implements SerDe {
 
     private static final Logger LOGGER = Logger.getLogger(XmlSerDe.class);

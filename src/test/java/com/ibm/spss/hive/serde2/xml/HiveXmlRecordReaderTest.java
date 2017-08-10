@@ -26,6 +26,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 
+@SuppressWarnings("unused")
 public class HiveXmlRecordReaderTest extends TestCase {
 
     /**
@@ -47,7 +48,7 @@ public class HiveXmlRecordReaderTest extends TestCase {
 
     private static final String XML = "...<record>record1</record>...<record>record2</record>...";
 
-    public void test() throws Exception {       
+    public void testXmlRecordReader() throws Exception {       
         JobConf jobConf = new JobConf();
         jobConf.set(HiveXmlRecordReader.START_TAG_KEY, "<record>");
         jobConf.set(HiveXmlRecordReader.END_TAG_KEY, "</record>");

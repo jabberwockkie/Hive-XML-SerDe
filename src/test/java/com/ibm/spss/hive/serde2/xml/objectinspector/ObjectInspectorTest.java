@@ -17,6 +17,7 @@
 package com.ibm.spss.hive.serde2.xml.objectinspector;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -44,6 +45,7 @@ import com.ibm.spss.hive.serde2.xml.processor.java.NodeArray;
 /**
  * 
  */
+@SuppressWarnings("unused")
 public class ObjectInspectorTest extends TestCase {
 
     private static final String LIST_COLUMNS = "columns";
@@ -444,32 +446,22 @@ public class ObjectInspectorTest extends TestCase {
     	}
         assertEquals("{\"extra\":\"extraTest\",\"test\":[{\"id\":\"1234\",\"code\":\"testCode1\",\"child\":{\"number\":\"4321\",\"child\":\"testing child1\"},\"ref\":\"ABC123\"},{\"id\":\"7890\",\"code\":\"testCode2\",\"child\":{\"number\":\"0987\",\"child\":\"testing child2\"},\"ref\":\"123abc\"}]}", deserializedFields[0].toString());
     }
-    
-    public void testXmlFile() throws SerDeException, IOException {
+ 
+    public void testAttributeXmlArrayArray() throws SerDeException {
     	// Setup Hive configuration & test data
 		Configuration configuration = new Configuration();
 		Properties properties = new Properties();
-/*		properties.put(LIST_COLUMNS, "tests");
-		properties.put(LIST_COLUMN_TYPES, "struct<Test:array<struct<Name:string,Run:string,SubTest:array<struct<Name:string,Value:string>>>>>");
-		properties.setProperty("column.xpath.tests", "/Tests");
-*/
-		properties.put(LIST_COLUMNS, "targus");
-		properties.put(LIST_COLUMN_TYPES, "map<string,string>");
-		properties.setProperty("column.xpath.targus", "/KeyedResponse/UnderwritingResponse/UnderwritingResult/ThirdParty/Targus/@*");
-
-
-		// Read in the input file
-        StringBuilder sb = new StringBuilder();
-        //BufferedReader br = new BufferedReader( new FileReader("/home/cloudera/xml/test.xml") );
-        BufferedReader br = new BufferedReader( new FileReader("/home/cloudera/xml/targus.xml") );
-        String line;
-        while ( (line = br.readLine()) != null ) {
-          sb.append(line).append("\n");
-        }
-        br.close();
-		
-		Text text = new Text();
-        text.set(sb.toString());
+		properties.put(LIST_COLUMNS, "tests");
+		properties.put(LIST_COLUMN_TYPES, "array<struct<extra:string,test:array<struct<id:string,code:string,child:struct<number:string,child:string>,ref:string>>>>");
+		properties.setProperty("column.xpath.tests", "/root/tests");
+        Text text = new Text();
+        text.set("<root><tests extra=\"extraTest\">"
+        		+ "<test id=\"1234\" code=\"testCode1\" ref=\"ABC123\"><child number=\"4321\">testing child1</child></test>"
+        		+ "<test id=\"7890\" code=\"testCode2\" ref=\"123abc\"><child number=\"0987\">testing child2</child></test>"
+        		+ "</tests><tests extra=\"BLAH\">"
+		   		+ "<test id=\"456\" code=\"testCode10\" ref=\"ABC123567\"><child number=\"43211234\">testing child12</child></test>"
+				+ "<test id=\"789\" code=\"testCode20\" ref=\"123abcdef\"><child number=\"09871234\">testing child21</child></test>"
+				+ "</tests></root>");
         
         // Initialize the SerDe
     	XmlSerDe xmlSerDe = new XmlSerDe();
@@ -487,10 +479,67 @@ public class ObjectInspectorTest extends TestCase {
 		    Object fieldData = soi.getStructFieldData(rowObj, fieldRef);
 		    deserializedFields[i] = SerDeUtils.toThriftPayload(fieldData, fieldOI, 0);
     	}
-	    @SuppressWarnings("resource")
-		FileWriter fw = new FileWriter("/home/cloudera/temp/test.txt");
-	    fw.write(deserializedFields[0].toString());
-    	fw.flush();
-	    assertTrue(deserializedFields[0].toString().length() > 0);
+        assertEquals("[{\"extra\":\"extraTest\",\"test\":[{\"id\":\"1234\",\"code\":\"testCode1\",\"child\":{\"number\":\"4321\",\"child\":\"testing child1\"},\"ref\":\"ABC123\"},{\"id\":\"7890\",\"code\":\"testCode2\",\"child\":{\"number\":\"0987\",\"child\":\"testing child2\"},\"ref\":\"123abc\"}]},{\"extra\":\"BLAH\",\"test\":[{\"id\":\"456\",\"code\":\"testCode10\",\"child\":{\"number\":\"43211234\",\"child\":\"testing child12\"},\"ref\":\"ABC123567\"},{\"id\":\"789\",\"code\":\"testCode20\",\"child\":{\"number\":\"09871234\",\"child\":\"testing child21\"},\"ref\":\"123abcdef\"}]}]", deserializedFields[0].toString());
+    }
+
+    public void testXmlFile() throws SerDeException, IOException {
+    	/* 
+    	 * We use this test to test various scenarios from XML files that we haven't tested before yet. 
+    	 * Upon finding a new test case, please create a new unit test based on the criteria.
+    	 * This test will pass when the file is not found so as to not break builds.
+    	 */
+    	
+    	// Setup Hive configuration & test data
+		Configuration configuration = new Configuration();
+		Properties properties = new Properties();
+/*		properties.put(LIST_COLUMNS, "tests");
+		properties.put(LIST_COLUMN_TYPES, "struct<Test:array<struct<Name:string,Run:string,SubTest:array<struct<Name:string,Value:string>>>>>");
+		properties.setProperty("column.xpath.tests", "/Tests");
+*/
+		properties.put(LIST_COLUMNS, "netconnectresponse_products_customsolution_tradeline");
+		properties.put(LIST_COLUMN_TYPES, "array<struct<derogcounter:string,maxpayment:struct<code:string>,opendate:string,openorclosed:struct<code:string,openorclosed:string>,consumercomment:string,balancedate:string,enhancedpaymentdata:struct<initialpaymentleveldate:string,specialcomment:struct<code:string>,accounttype:struct<code:string,accounttype:string>,accountcondition:struct<code:string,accountcondition:string>,paymentstatus:struct<code:int,paymentstatus:string>>,ecoa:struct<code:int,ecoa:string>,subcode:int,termsduration:struct<code:string,termsduration:string>,paymentprofile:string,monthlypaymentamount:int,kob:struct<code:string,kob:string>,status:struct<code:int,status:string>,originalcreditorname:string,evaluation:struct<code:string,evaluation:string>,maxdelinquencydate:string,balanceamount:string,seconddelinquencydate:string,delinquenciesover30days:string,amount:array<struct<value:string,qualifier:struct<code:string,qualifier:string>>>,monthshistory:string,delinquenciesover90days:string,specialcomment:struct<code:string>,accounttype:struct<code:string,accounttype:string>,delinquenciesover60days:string,accountnumber:string,revolvingorinstallment:struct<code:string,revolvingorinstallment:string>,firstdelinquencydate:string,statusdate:string,subscriberdisplayname:string,amountpastdue:string>>");
+		properties.setProperty("column.xpath.netconnectresponse_products_customsolution_tradeline", "/KeyedResponse/Response/NetConnectResponse/Products/CustomSolution//TradeLine");
+		
+		String inputFile = "c:\\temp\\data\\experian.xml";
+
+		File file = new File(inputFile);
+		
+		if(!file.exists()) { 
+			assertTrue("No File to Test, so we pass this test.",true); 
+		} else {		
+			// Read in the input file
+	        StringBuilder sb = new StringBuilder();
+	        BufferedReader br = new BufferedReader( new FileReader(inputFile) );
+	        String line;
+	        while ( (line = br.readLine()) != null ) {
+	          sb.append(line).append("\n");
+	        }
+	        br.close();
+			
+			Text text = new Text();
+	        text.set(sb.toString());
+	        
+	        // Initialize the SerDe
+	    	XmlSerDe xmlSerDe = new XmlSerDe();
+			xmlSerDe.initialize(configuration, properties);
+			StructObjectInspector soi = (StructObjectInspector) xmlSerDe.getObjectInspector();
+			List<? extends StructField> fieldRefs = soi.getAllStructFieldRefs();
+			Object[] deserializedFields = new Object[fieldRefs.size()];
+		    Object rowObj;
+		    ObjectInspector fieldOI;
+		    
+		    rowObj = xmlSerDe.deserialize(text);
+		    for (int i = 0; i < fieldRefs.size(); i++) {
+			    StructField fieldRef = fieldRefs.get(i);
+			    fieldOI = fieldRef.getFieldObjectInspector();
+			    Object fieldData = soi.getStructFieldData(rowObj, fieldRef);
+			    deserializedFields[i] = SerDeUtils.toThriftPayload(fieldData, fieldOI, 0);
+	    	}
+		    @SuppressWarnings("resource")
+			FileWriter fw = new FileWriter("c:\\temp\\data\\experian.txt");
+		    fw.write(deserializedFields[0].toString());
+	    	fw.flush();
+		    assertTrue(deserializedFields[0].toString().length() > 0);
+		}
     }
 }

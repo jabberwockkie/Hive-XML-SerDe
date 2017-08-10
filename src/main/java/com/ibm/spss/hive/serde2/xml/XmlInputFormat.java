@@ -40,6 +40,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapred.TextInputFormat;
+import org.apache.log4j.Logger;
 
 /**
  * Reads records that are delimited by a specifc begin/end tag.
@@ -51,6 +52,7 @@ public class XmlInputFormat extends TextInputFormat {
 
     public static final String START_TAG_KEY = "xmlinput.start";
     public static final String END_TAG_KEY = "xmlinput.end";
+    private static final Logger LOGGER = Logger.getLogger(XmlInputFormat.class);
 
     @Override
     public RecordReader<LongWritable, Text> getRecordReader(InputSplit inputSplit, JobConf jobConf, Reporter reporter) throws IOException {
@@ -69,6 +71,7 @@ public class XmlInputFormat extends TextInputFormat {
 
         public XmlRecordReader(FileSplit input, JobConf jobConf) throws IOException {
             Configuration conf = jobConf;
+            LOGGER.info("Print the Job Configuration for Review: " + jobConf);
             this.startTag = conf.get(START_TAG_KEY).getBytes("utf-8");
             this.endTag = conf.get(END_TAG_KEY).getBytes("utf-8");
             FileSplit split = (FileSplit) input;

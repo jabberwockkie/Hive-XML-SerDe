@@ -82,4 +82,16 @@ public class NodeArray extends ArrayList<Node> implements SerDeArray {
     public String getName() {
         return this.name;
     }
+
+    public NodeArray search(String name){
+    	NodeArray returnList = new NodeArray();
+    	
+    	this.forEach(node -> {
+    		if(node.getNodeName().equalsIgnoreCase(name)){
+    			returnList.add(node);
+    		}
+    	});
+
+        return returnList;
+    }
 }
